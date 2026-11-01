@@ -1,93 +1,117 @@
-# NTT DATA HRMS: Gemini × SAP SuccessFactors × Microsoft 365
+# NTT DATA HRMS: Gemini agents for HR
 
-Personal dashboards (KPI tiles, charts, notifications) and eighteen Gemini agents for two HR journeys:
+Eighteen Gemini agents on top of the HR system of record (SAP SuccessFactors), with live dashboards for two people:
 
-| Persona | Signs in with | Agents | Data |
-|---------|---------------|--------|------|
-| **Tessa**, HR Analyst | Microsoft 365 work account (Entra ID) | Operations dashboard + 10 agents | **Live SAP SuccessFactors** where the API has it, built-in demo HR data for the rest |
-| **Tyson Reed**, Employee | `Tyson@gmail.com` / `Tyson@123!@#` | Personal dashboard + 8 agents | Built-in demo HR data |
+- **Tyson, an employee**, who asks questions and gets things done without raising an HR ticket.
+- **Tessa, an HR analyst**, who runs day-to-day HR operations and spots exceptions before they become problems.
 
-Every reply lists the tool calls behind it; calls to SAP are marked **SAP**. Dashboard widgets and notifications open the matching agent with the question already asked.
+Every answer comes from a real lookup in HR systems, not from the model's memory, and shows which systems it used.
 
-## Run it
+---
 
-```bash
-npm install
-npm run dev          # API on :8787 + web app on http://localhost:5173
+## Use case scenarios
+
+### Employee self-service (Tyson, 8 agents)
+
+Tyson opens his home page and sees his leave balance, latest pay, attendance, upcoming holidays and open tasks. He then picks an agent and asks in plain language.
+
+![Employee use cases](public/solution/employee-use-cases.jpg)
+
+| Agent | What Tyson can do |
+|---|---|
+| Employee HR Assistant | Ask about policies, his profile and benefits |
+| Leave & Attendance | Check balances, review attendance, **apply for leave** |
+| Payroll Assistant | Understand a payslip, compare months, see deductions and tax |
+| Onboarding Assistant | See what is still pending and get help finishing it |
+| Career Development | Find matching internal roles and a learning plan |
+| Employee Benefits | Understand benefits, allowances and claims |
+| IT & Facilities | Request a laptop, software, badge or parking permit; **raised in Jira with live status** |
+| Employee Document Assistant | Generate employment, salary, experience and visa letters |
+
+Example: *"Apply annual leave from 22 to 24 December"* → the agent checks the balance, submits the request, and the leave tile and notifications on the home page update straight away.
+
+### HR operations (Tessa, 10 agents)
+
+Tessa's home page shows workforce, hiring, approvals, reviews, payroll and compliance signals from SAP SuccessFactors, filterable by division and by period (1, 3, 5, 10 years, all time or a custom range).
+
+![HR operations use cases](public/solution/hr-operations-use-cases.jpg)
+
+| Agent | What Tessa can do |
+|---|---|
+| HR Operations Copilot | See what needs attention today: approvals, workflows, overdue reviews |
+| Recruitment Operations | Review the pipeline, screen applicants, schedule interviews |
+| Payroll Operations | Find duplicates, large changes and outliers before pay day |
+| Employee Case Management | Triage new cases and draft replies |
+| Workforce Planning | Headcount, vacancies, hiring trend, country and department mix |
+| Compliance Monitoring | Expiring documents, missing data, training completion |
+| Performance Operations | Review completion and overdue reviews by division |
+| Attrition Intelligence | High-risk employees, regrettable losses, hotspot divisions |
+| HR Document Processing | Browse OneDrive and have Gemini extract the key details of a document |
+| HR Executive Reporting | One-click executive report as PDF, PowerPoint or an Outlook draft; send highlights to Teams |
+
+Example: *"Which divisions have the highest attrition risk?"* → the agent reads performance and risk-of-loss data from SAP, ranks the divisions and suggests next steps as one-click buttons.
+
+---
+
+## How an agent works
+
+Each agent is a Gemini model with a fixed role and a short list of tools it is allowed to call. The tools do the real work against SAP SuccessFactors, Jira and Microsoft 365.
+
+```mermaid
+sequenceDiagram
+    actor U as Employee or HR analyst
+    participant W as Web app
+    participant S as Server
+    participant G as Gemini
+    participant T as Tools (SAP, Jira, M365, HR data)
+
+    U->>W: Ask a question, or click a widget, tool card or next step
+    W->>S: Message + conversation so far
+    S->>G: Agent role, allowed tools, signed-in user, message
+    loop Until Gemini has what it needs
+        G->>S: Call a tool with arguments
+        S->>T: Run the tool as the signed-in user
+        T-->>S: Result (tagged with its source)
+        S-->>G: Tool result
+    end
+    G-->>S: Final answer
+    S-->>W: Answer + the tools that were used
+    W-->>U: Headline, summary, tables, next-step buttons
+    Note over W: If a tool changed data (e.g. leave submitted), dashboards refresh
 ```
 
-If PowerShell blocks `npm` (script execution policy), run `node dev.js` instead.
-The API uses `--use-system-ca` so corporate HTTPS inspection certificates are trusted.
+1. **Sign-in sets the role.** Employees and HR analysts see different agents and different data. HR can also sign in with Microsoft 365.
+2. **The agent only uses its own tools.** Each agent can call only the tools listed for it, so the Leave agent cannot read payroll, and an employee agent cannot read other people's records.
+3. **Gemini decides which tools to call**, reads the results, and can call several in a row (for example: leave balance, then submit the request).
+4. **Answers are grounded.** Every figure comes from a tool result, and each reply shows which tools and systems were used (SAP, Jira, OneDrive).
+5. **Replies follow one house style:** a headline, a highlighted summary, tables for records, short pointers, and **Next steps** that run as buttons.
+6. **Actions are real.** Leave requests, IT and facilities requests (created as Jira issues), interview scheduling, case updates and letters are written back, and the dashboards update without a page reload.
+7. **Dashboards stay live.** They refresh every minute, when you return to the tab, and after any agent action. Filters apply to every tile and chart.
 
-## Configuration (`.env`, see `.env.example`)
-- `VITE_CLIENT_ID`, `VITE_TENANT_ID`: Entra app registration for Tessa's sign-in. `http://localhost:5173` must be a
-  **Single-page application** redirect URI on that registration.
-- `GEMINI_API_KEY`: Google AI Studio key. Without it the agents still run their tools and show templated answers.
-- `SAP_API_KEY`: SAP Business Accelerator Hub key for the SuccessFactors sandbox
-  (`sandbox.api.sap.com/successfactors/odata/v2`). For a real tenant set `SAP_BASE_URL`, `SAP_USERNAME`, `SAP_PASSWORD`.
-- `HR_ALLOWED_USERS`: optional allow-list of Microsoft 365 emails for HR operations (empty = anyone in the tenant).
-- `ALLOW_DEMO_HR=true`: adds "Continue as Tessa (demo)" to the landing page, for demos before Entra is ready.
+### Where the data comes from
 
-## Jira (IT & Facilities requests)
-Requests raised with the IT & Facilities Assistant (parking permit, laptop, software access, badge…) are created as
-Jira issues (`server/jira.js`, REST API v3) in `JIRA_PROJECT_KEY` (or the first visible project). The chat, the dashboard
-widget and notifications show the Jira key, link, live status and assignee. If Jira is unreachable the request is kept
-as **Jira sync pending** and pushed automatically the next time requests are viewed. Requests persist in `server/.cache`.
+| System | Used for |
+|---|---|
+| **SAP SuccessFactors** | Workforce, positions, requisitions and applications, review forms, pay components, work permits, workflows, time-off approvals |
+| **Jira** | IT and facilities requests and their live status |
+| **Microsoft 365** | Sign-in for HR, OneDrive documents, Outlook draft of the executive report, Teams notifications |
+| **Built-in HR data** | Employee-level records the SAP sandbox does not provide (leave, payslips, benefits, onboarding, cases) |
 
-## OneDrive documents (HR operations)
-Tessa's **Documents · OneDrive** screen browses and searches her OneDrive and has Gemini extract the HR details of a
-document (type, people, dates, amounts, completeness, discrepancies; identity and bank numbers masked). Word, Excel and
-PowerPoint files are converted to PDF by Microsoft Graph first. The HR Document Processing Agent can use the same tools.
+---
 
-- The Entra app registration needs the **Microsoft Graph delegated permission `Files.Read.All`** (admin consent if your
-  tenant requires it). It is requested only when the user clicks **Connect OneDrive**, so sign-in works without it.
-- The browser sends the user's delegated Graph token with each OneDrive request (`x-graph-token`); the server uses it for
-  that request only and never stores it. Only Microsoft 365 sessions with the HR role can use OneDrive.
+## Architecture
 
-## Response style
-All agents share one house style (`STYLE` in `server/agents.js`): headline, highlighted summary, tables for records,
-pointers for insights, short paragraphs for explanations, and **Next steps** that render as buttons; clicking one sends
-that request to the agent.
+![Architecture](public/solution/architecture.jpg)
 
-## How it works
-```
-Browser (React, Vite)                     server/ (Node, no dependencies)
-  Landing: M365 button ──MSAL redirect──▶ Microsoft Entra ID
-           ID token ───────────────────▶ /api/auth/m365  verifies signature, audience, tenant → HR session
-  Landing: email + password ───────────▶ /api/auth/login  scrypt-hashed demo credential → employee session
-  Workspace chat ──────────────────────▶ /api/chat ─▶ Gemini function calling (up to 6 rounds)
-                                                     ├─ sap_* tools ─▶ SAP SuccessFactors OData v2
-                                                     └─ HRMS tools ─▶ built-in demo HR data
-```
+| Layer | What it does |
+|---|---|
+| Web app | Landing page, sign-in, dashboards, the agent picker, overview and docked chat |
+| Server | Verifies the user, keeps the agent definitions, runs the Gemini tool-calling loop, applies caching and throttling to SAP |
+| Gemini | Understands the request, chooses tools, writes the answer |
+| Connected systems | SAP SuccessFactors, Jira, Microsoft 365 |
 
-- `server/agents.js`: the 18 agents (system prompt, allowed tools, suggested prompts).
-- `server/sap.js`: live SAP tools. Queries select only needed fields (no SSN, phone, address, bank data), aggregate
-  server-side, run one at a time, cache for 30 minutes (also on disk in `server/.cache`), warm up in the background at
-  start-up and every 25 minutes, and fall back to the last good result if the sandbox rate limit is hit.
-- `server/dashboard.js`: dashboard tiles, chart series and notifications for each persona.
-- `server/tools.js`, `server/mockHr.js`: built-in HR tools and demo data.
-- `server/gemini.js`: Gemini loop; each tool result is tagged with its source so answers attribute figures correctly.
-- `server/auth.js`: Microsoft ID token verification (Microsoft signing keys, `aud`, `iss`, `tid`, `exp`) and demo login.
-- `src/`: landing page, sign-in flows, dashboards (`components/Dashboard.tsx`, `components/charts.tsx`) and agent workspace.
+---
 
-## Which HR operations agents use SAP
+## Deployment
 
-| Agent | SAP SuccessFactors entities | Built-in demo data |
-|-------|-----------------------------|----------------|
-| HR Operations Copilot | `EmployeeTime` (pending approvals), `JobApplication`, `FormHeader`, `Position` | cases and approvals queue |
-| Recruitment Operations | `JobRequisition`, `JobApplication` | interview scheduling |
-| Payroll Operations | `EmpPayCompRecurring` (duplicates, large changes, outliers) | payroll run, missing timesheets |
-| Workforce Planning | `User`, `Position` | |
-| Performance Operations | `FormHeader` (review forms; status 3 = completed) | |
-| Attrition Intelligence | `User` (risk of loss, performance labels) | |
-| HR Executive Reporting | all of the above | |
-| Case Management, Compliance, Document Processing | | all (no matching sandbox API) |
-
-The SAP sandbox is shared, read-only and rate limited; its data is SAP's demo company, not NTT DATA's.
-
-## Before real use
-- Replace the demo employee login with your identity provider.
-- The previous `.env` still holds `VITE_SECRET_ID` (an Entra client secret) and Supabase values from the old app.
-  Nothing reads them now. A client secret must never be in a `VITE_*` variable; remove it and rotate it.
-- The earlier SAP key was hardcoded in `supabase/functions/sap-analyze`; it now lives only in `.env`.
-  The previous project is preserved in `../project-backup-2026-11-01`.
+See [DEPLOY-CLOUD-RUN.md](DEPLOY-CLOUD-RUN.md) for deploying to Google Cloud Run with keys in Secret Manager.
