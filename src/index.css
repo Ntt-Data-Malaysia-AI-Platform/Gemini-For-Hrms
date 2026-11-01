@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Agent replies rendered by components/Markdown.tsx (house style defined in server/agents.js) */
+@layer components {
+  .md { @apply text-[13.5px] leading-relaxed text-slate-300; }
+  .md > * + * { @apply mt-2.5; }
+  .md p { @apply text-slate-300; }
+  .md strong { @apply font-semibold text-white; }
+  .md em { @apply text-slate-200; }
+  .md a { @apply font-medium text-sky-300 underline decoration-sky-500/40 underline-offset-2 hover:decoration-sky-300; }
+  .md code { @apply rounded bg-slate-800 px-1.5 py-0.5 text-[12px] text-cyan-300; }
+  .md hr { @apply my-4 border-white/10; }
+
+  /* Headline and sections */
+  .md h3 { @apply text-base font-bold leading-snug text-white first:mt-0; }
+  .md h4 { @apply mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-slate-400; }
+  .md h4::before { content: ''; @apply h-3 w-1 rounded-full bg-blue-500; }
+  .md h4.md-next { @apply text-emerald-300; }
+  .md h4.md-next::before { @apply bg-emerald-400; }
+
+  /* Summary callout */
+  .md-callout { @apply rounded-xl border border-blue-500/20 border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-500/10 to-transparent px-4 py-2.5; }
+  .md-callout p { @apply text-slate-200; }
+  .md-callout p + p { @apply mt-1; }
+
+  /* Lists */
+  .md ul { @apply list-disc space-y-1 pl-5 marker:text-blue-400; }
+  .md ol { @apply list-decimal space-y-1 pl-5 marker:font-semibold marker:text-blue-400; }
+  .md li ul, .md li ol, .md ul ul, .md ol ul { @apply mt-1 list-[circle]; }
+  /* Actionable next steps: each is a button that sends the step to the agent */
+  .md-steps { @apply grid gap-1.5 sm:grid-cols-2; }
+  .md-step { @apply flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2 text-left text-[13px] text-slate-200 transition; }
+  .md-step:hover:not(:disabled) { @apply -translate-y-px border-emerald-400/50 bg-emerald-500/[0.12] text-white; }
+  .md-step:disabled { @apply cursor-not-allowed opacity-50; }
+  .md-step-go { @apply flex-shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300; }
+  .md-step-go::after { content: ' →'; }
+
+  /* Tables */
+  .md-table { @apply overflow-x-auto rounded-xl border border-white/10 bg-slate-950/40; }
+  .md table { @apply w-full border-collapse text-xs; }
+  .md thead th { @apply whitespace-nowrap border-b border-white/10 bg-white/[0.05] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400; }
+  .md td { @apply border-b border-white/[0.05] px-3 py-2 align-top text-slate-300; }
+  .md tbody tr:nth-child(even) td { @apply bg-white/[0.02]; }
+  .md tbody tr:hover td { @apply bg-blue-500/[0.06]; }
+  .md tbody tr:last-child td { @apply border-b-0; }
+}
+
+/* ---------- Theme tokens: validated categorical chart slots per surface ---------- */
+:root { color-scheme: dark; --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500; --series-5: #d55181; }
+:root[data-theme="light"] { color-scheme: light; --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100; --series-5: #e87ba4; }
+html { scroll-behavior: smooth; }
+
+/* ---------- Light theme ----------
+   Components are written with dark utilities; in light mode these rules remap surfaces, borders and text in one place.
+   Base classes are matched with a leading space or at the start so hover:/focus: variants are not affected. */
+[data-theme="light"] body,
+[data-theme="light"] [class~="bg-slate-950"] { background-color: #f4f6fb; }
+[data-theme="light"] [class~="bg-slate-900"], [data-theme="light"] [class*=" bg-slate-900/"], [data-theme="light"] [class^="bg-slate-900/"] { background-color: #ffffff; }
+[data-theme="light"] [class*=" bg-slate-950/"], [data-theme="light"] [class^="bg-slate-950/"] { background-color: rgba(241, 245, 249, 0.95); }
+[data-theme="light"] [class~="bg-slate-800"] { background-color: #e2e8f0; }
+[data-theme="light"] [class*=" bg-white/"], [data-theme="light"] [class^="bg-white/"] { background-color: rgba(15, 23, 42, 0.04); }
+[data-theme="light"] [class*=" border-white/"], [data-theme="light"] [class^="border-white/"] { border-color: rgba(15, 23, 42, 0.12); }
+[data-theme="light"] [class~="border-slate-700"] { border-color: #cbd5e1; }
+[data-theme="light"] [class*="shadow-black"] { --tw-shadow-color: rgba(15, 23, 42, 0.08); }
+[data-theme="light"] [class~="to-slate-900"] { --tw-gradient-to: #ffffff var(--tw-gradient-to-position); }
+[data-theme="light"] [class*="via-slate-900"] { --tw-gradient-stops: var(--tw-gradient-from), #ffffff var(--tw-gradient-via-position), var(--tw-gradient-to); }
+
+[data-theme="light"] [class~="text-white"]:not([class*="bg-blue-6"]):not([class*="bg-red-6"]):not([class*="bg-gradient"]):not([class*="bg-[#5b5fc7]"]) { color: #0f172a; }
+[data-theme="light"] [class~="text-slate-100"], [data-theme="light"] [class~="text-slate-200"] { color: #1e293b; }
+[data-theme="light"] [class~="text-slate-300"] { color: #334155; }
+[data-theme="light"] [class~="text-slate-400"] { color: #475569; }
+[data-theme="light"] [class~="text-slate-500"] { color: #64748b; }
+[data-theme="light"] [class~="text-slate-600"] { color: #94a3b8; }
+[data-theme="light"] [class~="text-blue-200"], [data-theme="light"] [class~="text-blue-300"] { color: #1d4ed8; }
+[data-theme="light"] [class~="text-cyan-300"], [data-theme="light"] [class*=" text-cyan-300/"] { color: #0e7490; }
+[data-theme="light"] [class~="text-sky-300"] { color: #0369a1; }
+[data-theme="light"] [class~="text-emerald-200"], [data-theme="light"] [class~="text-emerald-300"] { color: #047857; }
+[data-theme="light"] [class~="text-amber-300"] { color: #b45309; }
+[data-theme="light"] [class~="text-red-300"] { color: #b91c1c; }
+[data-theme="light"] [class~="text-pink-300"] { color: #be185d; }
+[data-theme="light"] [class*="hover:text-white"]:hover { color: #0f172a; }
+[data-theme="light"] [class~="bg-white"] { box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12); }
+
+[data-theme="light"] .md, [data-theme="light"] .md p { color: #334155; }
+[data-theme="light"] .md strong, [data-theme="light"] .md h3 { color: #0f172a; }
+[data-theme="light"] .md h4 { color: #64748b; }
+[data-theme="light"] .md em { color: #1e293b; }
+[data-theme="light"] .md a { color: #0369a1; }
+[data-theme="light"] .md code { background: #e2e8f0; color: #0e7490; }
+[data-theme="light"] .md-callout p { color: #1e293b; }
+[data-theme="light"] .md-table { background: #ffffff; border-color: rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .md thead th { background: rgba(15, 23, 42, 0.04); color: #475569; border-color: rgba(15, 23, 42, 0.1); }
+[data-theme="light"] .md td { color: #334155; border-color: rgba(15, 23, 42, 0.07); }
+[data-theme="light"] .md tbody tr:nth-child(even) td { background: rgba(15, 23, 42, 0.02); }
+[data-theme="light"] .md h4.md-next, [data-theme="light"] .md-step-go { color: #047857; }
+[data-theme="light"] .md-step { color: #1e293b; }
+
+/* ---------- Right-to-left (Arabic) ---------- */
+[dir="rtl"] .text-left { text-align: right; }
+[dir="rtl"] .text-right { text-align: left; }
+[dir="rtl"] [class~="left-3"] { left: auto; right: 0.75rem; }
+[dir="rtl"] [class~="pl-10"] { padding-left: 0.75rem; padding-right: 2.5rem; }
+[dir="rtl"] [class~="right-0"][class~="z-40"] { right: auto; left: 0; }
+[dir="rtl"] aside[class~="border-r"] { border-right-width: 0; border-left-width: 1px; }
+@media (max-width: 1023px) {
+  [dir="rtl"] aside[class~="left-0"] { left: auto; right: 0; }
+  [dir="rtl"] aside[class~="-translate-x-full"] { --tw-translate-x: 100%; }
+}
+[dir="rtl"] .md ul, [dir="rtl"] .md ol { padding-left: 0; padding-right: 1.25rem; }
+[dir="rtl"] .md-callout { border-left-width: 1px; border-right-width: 4px; border-right-color: #3b82f6; }
+[dir="rtl"] .md-step-go::after { content: ' ←'; }
+[dir="rtl"] body { font-family: 'Segoe UI', Tahoma, 'Noto Sans Arabic', system-ui, sans-serif; }
+
+/* ---------- Print: the executive report only ---------- */
+@media print {
+  @page { margin: 14mm; }
+  body * { visibility: hidden; }
+  #print-report, #print-report * { visibility: visible; }
+  #print-report { position: absolute; inset: 0 auto auto 0; width: 100%; }
+  #print-report * { color: #0f172a !important; background: transparent !important; border-color: #cbd5e1 !important; box-shadow: none !important; }
+  #print-report .md thead th { background: #f1f5f9 !important; }
+  #print-report .md-callout { border-left: 4px solid #2563eb !important; }
+}
+
+/* KPI tile highlight when its value changes (Dashboard.tsx) */
+@keyframes kpi-flash { 0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55); } 100% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0); } }
+.kpi-changed { animation: kpi-flash 1.2s ease-out 1; }
+@media (prefers-reduced-motion: reduce) { .kpi-changed { animation: none; } }
+
+/* Soft pulsing glow around the agent picker, agent hero and chat card. */
+@keyframes agent-glow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25), 0 0 18px -2px rgba(59, 130, 246, 0.45), 0 0 42px -12px rgba(34, 211, 238, 0.35); }
+  50% { box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4), 0 0 26px 0 rgba(59, 130, 246, 0.6), 0 0 56px -10px rgba(34, 211, 238, 0.5); }
+}
+.agent-glow { animation: agent-glow 3.2s ease-in-out infinite; }
+[data-theme="light"] .agent-glow { animation-name: agent-glow-light; }
+@keyframes agent-glow-light {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(42, 120, 214, 0.25), 0 0 16px -2px rgba(42, 120, 214, 0.3); }
+  50% { box-shadow: 0 0 0 1px rgba(42, 120, 214, 0.4), 0 0 24px 0 rgba(42, 120, 214, 0.42); }
+}
+@media (prefers-reduced-motion: reduce) { .agent-glow { animation: none; box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 0 22px -2px rgba(59, 130, 246, 0.5); } }

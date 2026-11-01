@@ -1,0 +1,12 @@
+# Builds the container with the public Entra IDs baked into the web app and pushes it to Artifact Registry.
+# gcloud builds submit --config cloudbuild.yaml --substitutions=_IMAGE=...,_VITE_CLIENT_ID=...,_VITE_TENANT_ID=...
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_IMAGE}', '--build-arg', 'VITE_CLIENT_ID=${_VITE_CLIENT_ID}', '--build-arg', 'VITE_TENANT_ID=${_VITE_TENANT_ID}', '.']
+images: ['${_IMAGE}']
+substitutions:
+  _IMAGE: ''
+  _VITE_CLIENT_ID: ''
+  _VITE_TENANT_ID: ''
+options:
+  logging: CLOUD_LOGGING_ONLY
