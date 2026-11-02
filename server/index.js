@@ -24,6 +24,7 @@ const { employeeDashboard, hrDashboard } = await import('./dashboard.js');
 const onedrive = await import('./onedrive.js');
 const report = await import('./report.js');
 const teams = await import('./teams.js');
+const jobs = await import('./jobs.js');
 
 // Cloud Run (and most hosts) pass the port in PORT; API_PORT is the local dev setting.
 const PORT = Number(process.env.PORT || process.env.API_PORT || 8787);
@@ -88,6 +89,25 @@ async function api(req, res, url) {
   const years = params.has('years') && [1, 3, 5, 10, 0].includes(Number(params.get('years'))) ? Number(params.get('years')) : 5;
   // A custom from/to period (YYYY-MM-DD) overrides the preset years; dashboard.js validates it.
   const filters = { division: params.get('division') || null, years, from: params.get('from'), to: params.get('to') };
+  if (url.startsWith('/api/candidate/')) {
+    if (user.role !== 'candidate') return send(res, 403, { error: 'The job portal is for candidates.' });
+    try {
+      if (url === '/api/candidate/profile') return send(res, 200, jobs.candidateProfile(user));
+      if (url === '/api/candidate/search' && req.method === 'POST') return send(res, 200, await jobs.searchJobs(user, (await readBody(req)).query));
+      if (url === '/api/candidate/prepare' && req.method === 'POST') return send(res, 200, await jobs.prepareApplication(user, String((await readBody(req)).jobId || '')));
+      if (url === '/api/candidate/apply' && req.method === 'POST') { const b = await readBody(req); return send(res, 200, jobs.submitApplication(user, String(b.jobId || ''), b.fields)); }
+    } catch (e) { return send(res, 400, { error: e.message }); }
+  }
+  if (url.startsWith('/api/hr/recruiting/')) {
+    if (user.role !== 'hr') return send(res, 403, { error: 'Shortlists are available to HR operations only.' });
+    try {
+      if (url === '/api/hr/recruiting/jobs') return send(res, 200, { jobs: jobs.openJobs() });
+      if (url === '/api/hr/recruiting/shortlist') return send(res, 200, await jobs.shortlist(params.get('jobId') || '', params.get('balanced') !== '0'));
+    } catch (e) { return send(res, 400, { error: e.message }); }
+  }
+  if (url === '/api/dashboard') {
+    if (user.role === 'candidate') return send(res, 403, { error: 'No dashboard for candidates.' });
+  }
   if (url === '/api/dashboard') return send(res, 200, user.role === 'hr' ? await hrDashboard(filters) : await employeeDashboard(user));
   if (url === '/api/report') {
     if (user.role !== 'hr') return send(res, 403, { error: 'Executive reports are available to HR operations only.' });

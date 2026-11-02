@@ -4,6 +4,7 @@ import wd from './mockHr.js';
 import { tools } from './tools.js';
 import { sapData, sapTools } from './sap.js';
 import { jiraConfigured } from './jira.js';
+import { recentSubmissions } from './jobs.js';
 
 const settle = async (entries) => {
   const out = {};
@@ -204,6 +205,7 @@ export async function hrDashboard({ division = null, years = 5, from: customFrom
     raw.todos && timesheets && { severity: 'warning', title: `${timesheets} timesheet to-dos open`, detail: label, agent: 'compliance', prompt: 'How many timesheet to-dos are open?' },
     raw.forms && overdue.length && { severity: 'warning', title: `${overdue.length.toLocaleString()} performance reviews overdue`, detail: scopeText, agent: 'performance', prompt: 'Which appraisals are most overdue?' },
     payFindings && payFindings.length && { severity: 'info', title: `${payFindings.length} pay exceptions`, detail: scopeText, agent: 'payroll-ops', prompt: 'Check SAP pay data for exceptions' },
+    ...recentSubmissions().slice(0, 1).map((n) => ({ severity: 'info', title: `New application: ${n.name} for ${n.title}`, detail: 'Job portal · ATS scored', agent: 'recruitment', prompt: `Show the top 5 candidates for ${n.title}` })),
   ].filter(Boolean);
 
   const vacantInScope = posScope.filter(isVacant).length;

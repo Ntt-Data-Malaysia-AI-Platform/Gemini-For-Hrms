@@ -2,7 +2,7 @@
 // from the live dashboard data and four one-click tools that turn a few inputs into a chat request.
 import { useState, type FormEvent } from 'react';
 import {
-  AlarmClock, AlertTriangle, BadgeCheck, BarChart3, Briefcase, Building2, CalendarCheck, CalendarDays, CalendarPlus, Car, CheckCircle2,
+  AlarmClock, AlertTriangle, Award, BadgeCheck, BarChart3, Briefcase, Building2, CalendarCheck, CalendarDays, CalendarPlus, Car, CheckCircle2,
   ClipboardCheck, ClipboardList, Clock, Coins, FileSearch, FileSignature, FileText, Flag, Gift, Globe2, GraduationCap, HeartPulse,
   Inbox, KeyRound, Laptop, LineChart, ListChecks, Mail, MapPin, Megaphone, PieChart, Plane, Receipt, Scale, Search, ShieldCheck,
   Sparkles, Target, TrendingDown, TrendingUp, UserCheck, UserMinus, UserPlus, Users, Wallet, Workflow, X, type LucideIcon,
@@ -210,7 +210,7 @@ export const AGENT_TOOLS: Record<string, Tool[]> = {
     t('Screen applicants', 'Rank candidates for a requisition.', UserCheck, 'Screen applicants for requisition {0}', [f('Requisition ID', 'e.g. 1204')]),
     t('Pipeline summary', 'Stages, volumes and bottlenecks.', BarChart3, 'Summarise the recruitment pipeline'),
     t('Schedule interview', 'Book a slot with a candidate.', CalendarPlus, 'Schedule an interview with {0} on {1}', [f('Candidate', 'Full name'), f('Date', '', 'date')]),
-    t('Hard-to-fill roles', 'Requisitions open the longest.', Briefcase, 'Which requisitions are hardest to fill?'),
+    t('Top 5 shortlist', 'ATS-ranked candidates with scorecards.', Award, 'Show the top 5 candidates for the {0} role', [f('Role', 'e.g. Multi-Cloud Solutions Architect')]),
   ],
   'payroll-ops': [
     t('Run payroll review', 'Find anomalies before pay day.', FileSearch, 'Run the payroll review'),

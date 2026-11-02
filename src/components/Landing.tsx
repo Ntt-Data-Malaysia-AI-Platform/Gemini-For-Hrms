@@ -135,7 +135,7 @@ function Home({ status, busy, error, onM365, onDemoHr, onEmployeeLogin }: Props)
           </div>
 
           <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5" autoComplete="on">
-            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-300"><Users className="h-3.5 w-3.5" /> {t('Employees and HR')}</div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-300"><Users className="h-3.5 w-3.5" /> {t('Employees, HR and candidates')}</div>
             <h2 className="mb-4 text-lg font-bold text-white">{t('Sign in with email')}</h2>
             <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-slate-400">{t('Email')}</label>
             <div className="relative mb-3">

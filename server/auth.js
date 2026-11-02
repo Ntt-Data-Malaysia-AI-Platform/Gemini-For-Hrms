@@ -1,5 +1,5 @@
 // Sign-in for the two journeys:
-//   Employee (Tyson) and HR analyst (Tessa): email + password, checked here against salted scrypt hashes.
+//   Employee (Tyson), HR analyst (Tessa) and job candidate (Riyadh): email + password, checked here against salted scrypt hashes.
 //   HR analyst (Tessa) can also use Microsoft 365. The browser signs in with MSAL and sends its Entra ID token;
 //   the server verifies the signature against Microsoft's published keys before granting the HR role.
 import crypto from 'node:crypto';
@@ -25,6 +25,7 @@ export const endSession = (req) => sessions.delete((req.headers.authorization ||
 // ---------- Email + password login ----------
 const ACCOUNTS = {
   'tyson@gmail.com': { hash: '3680479228ab4bcb68f4e01dd59978c8:dde76ae828950f68a43e5653fdd7e737d1acd9a88d3e1ba5ca2338341249485a', empId: 'E1001' },
+  'riyadh@gmail.com': { hash: '4bcc5b9c8fc400fc681514d379f6d780:45f797f01fdc9d67f8d567becfd817ca695059f22b55e22aa8bbc6db42f6c886', role: 'candidate', name: 'Riyadh Karim' },
   'tessa@gmail.com': { hash: 'dd89b4484295e7df4064fb832ad31d9d:4b437b88395f06248dc5afc4371785b3c6aaab8d8fb27f36a22a80ed8eddb363', role: 'hr', name: 'Tessa Nguyen' },
 };
 
@@ -35,6 +36,7 @@ export function passwordLogin(email, password) {
   const actual = crypto.scryptSync(String(password || ''), salt, 32);
   const ok = entry && crypto.timingSafeEqual(actual, Buffer.from(expected, 'hex'));
   if (!ok) return null;
+  if (entry.role === 'candidate') return { role: 'candidate', name: entry.name, title: 'Principal Cloud Architect', dept: 'Candidate', email: String(email).toLowerCase(), authMethod: 'Email and password' };
   if (entry.role === 'hr') return { role: 'hr', name: entry.name, title: 'HR Analyst', dept: 'HR Operations', email: String(email).toLowerCase(), authMethod: 'Email and password' };
   const e = wd.employee(entry.empId);
   return { role: 'employee', empId: e.id, name: e.name, title: e.title, dept: e.dept, email: String(email).toLowerCase(), authMethod: 'Email and password' };

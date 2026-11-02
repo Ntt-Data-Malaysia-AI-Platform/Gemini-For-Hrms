@@ -1,6 +1,6 @@
 // Client for the HR agents API in server/. The session token lives in sessionStorage (cleared with the tab).
 
-export type Role = 'employee' | 'hr';
+export type Role = 'employee' | 'hr' | 'candidate';
 
 export interface Agent {
   id: string;
@@ -46,6 +46,33 @@ export interface ChatReply {
   changed?: boolean; // true when an agent action changed data (dashboards refresh)
   error?: string;
 }
+
+// ---------- Job portal ----------
+export interface JobMatch {
+  id: string; title: string; dept: string; location: string; type: string; level: string; desc: string; minYears: number;
+  matchPct: number; matched: string[]; missing: string[]; preferred: string[]; applied: boolean; reason: string;
+}
+export interface JobSearch { query: string; summary: string; aiGenerated: boolean; results: JobMatch[] }
+export interface AppFields {
+  fullName: string; email: string; phone: string; location: string; currentTitle: string; currentEmployer?: string; yearsExperience: number;
+  skills: string[]; certifications: string[]; education: string; noticePeriod: string; summary: string; gender?: string;
+}
+export interface PreparedApplication { job: { id: string; title: string; dept: string; location: string }; fields: AppFields; source: 'gemini' | 'parsed'; required: string[] }
+export interface CandidateProfile {
+  name: string; title: string; location: string; years: number; skills: string[]; certifications: string[]; education: string; summary: string;
+  applications: { reference: string; jobId: string; title: string; submittedAt: string; status: string }[];
+}
+export interface ScoreRow { key: string; label: string; max: number; pts: number; detail: string }
+export interface ShortCandidate {
+  rank: number; applicationId: string; name: string; title: string; employer: string | null; location: string; years: number; noticePeriod: string;
+  certifications: string[]; education: string; slot: string; score: number; scorecard: ScoreRow[]; matched: string[]; missing: string[]; preferred: string[];
+  why: string; isNew: boolean; submittedAt: string;
+}
+export interface Shortlist {
+  job: { id: string; title: string; dept: string; location: string; minYears: number; must: string[] };
+  totalApplicants: number; balanced: boolean; aiGenerated: boolean; fairness: string; candidates: ShortCandidate[];
+}
+export interface HrJob { id: string; title: string; dept: string; location: string; minYears: number; must: string[]; applicants: number }
 
 // ---------- OneDrive ----------
 export interface DriveItem {
@@ -152,5 +179,15 @@ export const api = {
   dashboard: (f?: HrFilters) => call<EmployeeDash | HrDash>(`/api/dashboard${qs(f)}`),
   report: (f?: HrFilters) => call<ExecReport>(`/api/report${qs(f)}`),
   teamsNotify: (title: string, subtitle: string, items: Notice[]) => call<{ sent: number }>('/api/teams/notify', { title, subtitle, items }),
+  candidate: {
+    profile: () => call<CandidateProfile>('/api/candidate/profile'),
+    search: (query: string) => call<JobSearch>('/api/candidate/search', { query }),
+    prepare: (jobId: string) => call<PreparedApplication>('/api/candidate/prepare', { jobId }),
+    apply: (jobId: string, fields: AppFields) => call<{ reference: string; job: { id: string; title: string }; submittedAt: string }>('/api/candidate/apply', { jobId, fields }),
+  },
+  recruiting: {
+    jobs: () => call<{ jobs: HrJob[] }>('/api/hr/recruiting/jobs'),
+    shortlist: (jobId: string, balanced: boolean) => call<Shortlist>(`/api/hr/recruiting/shortlist?jobId=${encodeURIComponent(jobId)}&balanced=${balanced ? 1 : 0}`),
+  },
   logout: () => call('/api/logout', {}),
 };

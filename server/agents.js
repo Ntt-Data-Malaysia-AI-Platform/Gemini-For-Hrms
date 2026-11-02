@@ -5,8 +5,9 @@ import { tools } from './tools.js';
 import { sapTools } from './sap.js';
 import { jiraConfigured } from './jira.js';
 import { onedriveTools } from './onedrive.js';
+import { jobsTools } from './jobs.js';
 
-export const allTools = { ...tools, ...sapTools, ...onedriveTools };
+export const allTools = { ...tools, ...sapTools, ...onedriveTools, ...jobsTools };
 for (const t of Object.values(tools)) t.source ||= 'HRMS';
 // IT & Facilities requests are raised and tracked in Jira when it is configured.
 if (jiraConfigured()) for (const n of ['create_service_request', 'get_service_requests']) tools[n].source = 'Jira';
@@ -70,10 +71,10 @@ export const agents = [
     'Give the HR analyst a prioritised view of the day. Combine the live SAP queue (time-off approvals, open applications, overdue reviews, vacancies), pending SAP workflow requests (sap_workflow_queue) and expired employee documents (sap_compliance_status) with the case and approval queue from get_pending_tasks. Lead with what is most urgent and give a recommended next action for each item.',
     ['What needs my attention today?', 'How many time-off requests are waiting for approval?', 'Summarise pending approvals and exceptions'],
     [[/workflow|stalled|request/i, 'sap_workflow_queue'], [/time.?off|leave|approval/i, 'sap_ops_queue'], [/./, 'sap_ops_queue']]),
-  agent('recruitment', 'hr', 'Recruitment Operations Agent', 'Target', 'Screens applications, identifies skill matches, coordinates interviews and tracks hiring progress.', ['sap_recruitment_pipeline', 'sap_screen_applicants', 'schedule_interview'],
-    'Support recruiters with SAP Recruiting data: hiring progress, requisitions, applicant screening and ranking (status, rating, availability). schedule_interview books in the interview scheduler and needs a candidate ID like C-9001.',
+  agent('recruitment', 'hr', 'Recruitment Operations Agent', 'Target', 'Screens applications, identifies skill matches, coordinates interviews and tracks hiring progress.', ['sap_recruitment_pipeline', 'sap_screen_applicants', 'shortlist_candidates', 'schedule_interview'],
+    'Support recruiters. shortlist_candidates returns the ATS-ranked top 5 from the job portal for a role, with a scorecard per candidate (balanced slate: best overall profile plus best 2 men and 2 women; say so, and mention that gender is not a scoring input). Also use SAP Recruiting data: hiring progress, requisitions, applicant screening and ranking (status, rating, availability). schedule_interview books in the interview scheduler and needs a candidate ID like C-9001.',
     ['Show our hiring progress', 'Which requisitions have the most applicants?', 'Screen the applicants for requisition 482'],
-    [[/screen|applicant|candidate|rank/i, 'sap_screen_applicants', { jobReqId: '482' }], [/./, 'sap_recruitment_pipeline']]),
+    [[/shortlist|top 5|top five|best candidate|ats/i, 'shortlist_candidates', { job: 'J-101' }], [/screen|applicant|candidate|rank/i, 'sap_screen_applicants', { jobReqId: '482' }], [/./, 'sap_recruitment_pipeline']]),
   agent('payroll-ops', 'hr', 'Payroll Operations Agent', 'Calculator', 'Detects unusual salary changes, duplicate payments, missing timesheets and payroll exceptions.', ['sap_payroll_review', 'get_payroll_exceptions'],
     'Review pay data for exceptions before payroll is finalised. sap_payroll_review scans SAP pay components (duplicates, large changes, outliers, zero amounts); get_payroll_exceptions covers the current run in the payroll engine, including missing timesheets. Explain each finding, likely cause, risk and recommended fix.',
     ['Check SAP pay data for exceptions', 'Any duplicate or unusual salary records?', 'Who is missing a timesheet this run?'],
@@ -110,4 +111,4 @@ export const agents = [
 
 // What the landing page and workspace show about each agent (no prompts or routing internals).
 export const publicAgent = ({ id, role, name, icon, description, prompts, tools: t }) =>
-  ({ id, role, name, icon, description, prompts, sources: [...new Set(t.map((n) => allTools[n].source))].filter((s) => ['SAP SuccessFactors', 'Jira', 'OneDrive'].includes(s)) });
+  ({ id, role, name, icon, description, prompts, sources: [...new Set(t.map((n) => allTools[n].source))].filter((s) => ['SAP SuccessFactors', 'Jira', 'OneDrive', 'Job portal'].includes(s)) });

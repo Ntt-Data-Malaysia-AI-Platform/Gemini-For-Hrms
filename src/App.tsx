@@ -6,6 +6,7 @@ import { loginRequest } from './config/authConfig';
 import { msal } from './lib/msal';
 import { Landing } from './components/Landing';
 import { Workspace } from './components/Workspace';
+import { CandidatePortal } from './components/CandidatePortal';
 import { applyPrefs, loadPrefs, PrefsContext, type Lang, type Theme } from './lib/i18n';
 
 interface Session { user: User; agents: Agent[]; status: Status }
@@ -99,6 +100,7 @@ function Shell({ redirect, redirectError }: { redirect: AuthenticationResult | n
     );
   }
 
+  if (session?.user.role === 'candidate') return <CandidatePortal key={session.user.email} user={session.user} onSignOut={signOut} />;
   if (session) return <Workspace key={session.user.email} user={session.user} agents={session.agents} status={session.status} onSignOut={signOut} />;
 
   return (

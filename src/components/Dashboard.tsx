@@ -7,6 +7,7 @@ import type { EmployeeDash, HrDash, HrFilters, Kpi, Severity, User } from '../li
 import { useT } from '../lib/i18n';
 import { AgentIcon, JiraBadge, SapBadge } from './AgentIcon';
 import { AGENT_TOOLS, StatCard, ToolCard, agentStats } from './agentKit';
+import { ShortlistPanel } from './ShortlistPanel';
 import { AttendanceStrip, Columns, Donut, HBars, Progress, SERIES, STATUS, StackedColumns } from './charts';
 
 type Ask = (agentId: string, prompt: string) => void;
@@ -392,6 +393,7 @@ function useHrWidgets(d: HrDash, filters: HrFilters, onFilter: (f: HrFilters) =>
         ) : <Unavailable />}
       </Widget>
     ),
+    shortlist: <ShortlistPanel onAsk={onAsk} />,
     recruiting: (
       <Widget title={t('Recruiting pipeline')} sub={`Applications on open requisitions${scope} · created ${d.filters.span}`} sap action={() => onAsk('recruitment', 'Which requisitions have the most applicants?')}>
         {d.applications ? (
@@ -565,7 +567,7 @@ const AGENT_VIEWS: Record<string, { kpis: string[]; widgets: string[] }> = {
   documents: { kpis: [], widgets: ['documents', 'profile'] },
   // HR operations
   'ops-copilot': { kpis: ['Approvals waiting', 'Pending workflows', 'Reviews overdue'], widgets: ['notices', 'documents', 'workflows:wide'] },
-  recruitment: { kpis: ['Open requisitions', 'New hires', 'Vacant positions'], widgets: ['recruiting:wide', 'hiring:wide'] },
+  recruitment: { kpis: ['Open requisitions', 'New hires', 'Vacant positions'], widgets: ['shortlist:wide', 'recruiting:wide', 'hiring:wide'] },
   'payroll-ops': { kpis: [], widgets: ['payroll:wide'] },
   'case-mgmt': { kpis: ['Pending workflows'], widgets: ['cases', 'workflows'] },
   workforce: { kpis: ['Active employees', 'New hires', 'Vacant positions', 'Open requisitions'], widgets: ['headcount:wide', 'hiring', 'countries', 'departments', 'keyTalent'] },
