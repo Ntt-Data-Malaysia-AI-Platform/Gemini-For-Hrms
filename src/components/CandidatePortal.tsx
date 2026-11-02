@@ -4,6 +4,7 @@ import { BadgeCheck, Briefcase, Check, CheckCircle2, ChevronRight, FileText, Loa
 import { api, type AppFields, type CandidateProfile, type JobMatch, type JobSearch, type PreparedApplication, type User } from '../lib/api';
 import { usePrefs } from '../lib/i18n';
 import { Brand } from './Brand';
+import { CandidateInterviews } from './InterviewPipeline';
 
 const SUGGESTIONS = ['cloud architect', 'presales', 'azure architect', 'aws architect', 'google cloud', 'multi cloud', 'data platform'];
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
@@ -290,6 +291,7 @@ export function CandidatePortal({ user, onSignOut }: { user: User; onSignOut: ()
                   <li key={a.reference} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
                     <div className="text-sm font-semibold text-white">{a.title}</div>
                     <div className="flex items-center justify-between text-[11px] text-slate-400"><span>{a.reference} · {when(a.submittedAt)}</span><Chip>{a.status}</Chip></div>
+                    <CandidateInterviews reference={a.reference} interview={a.interview} onChanged={loadProfile} />
                   </li>))}</ul>
               ) : <p className="mt-2 text-xs text-slate-500">No applications yet. Pick a role and use Apply with Gemini.</p>}
             </section>

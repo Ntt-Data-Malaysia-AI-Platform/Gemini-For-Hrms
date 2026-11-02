@@ -95,6 +95,7 @@ async function api(req, res, url) {
       if (url === '/api/candidate/profile') return send(res, 200, jobs.candidateProfile(user));
       if (url === '/api/candidate/search' && req.method === 'POST') return send(res, 200, await jobs.searchJobs(user, (await readBody(req)).query));
       if (url === '/api/candidate/prepare' && req.method === 'POST') return send(res, 200, await jobs.prepareApplication(user, String((await readBody(req)).jobId || '')));
+      if (url === '/api/candidate/interview/confirm' && req.method === 'POST') return send(res, 200, jobs.confirmInterview(user, String((await readBody(req)).reference || '')));
       if (url === '/api/candidate/apply' && req.method === 'POST') { const b = await readBody(req); return send(res, 200, jobs.submitApplication(user, String(b.jobId || ''), b.fields)); }
     } catch (e) { return send(res, 400, { error: e.message }); }
   }
@@ -102,6 +103,7 @@ async function api(req, res, url) {
     if (user.role !== 'hr') return send(res, 403, { error: 'Shortlists are available to HR operations only.' });
     try {
       if (url === '/api/hr/recruiting/jobs') return send(res, 200, { jobs: jobs.openJobs() });
+      if (url === '/api/hr/recruiting/schedule' && req.method === 'POST') return send(res, 200, jobs.scheduleNext(String((await readBody(req)).applicationId || '')));
       if (url === '/api/hr/recruiting/shortlist') return send(res, 200, await jobs.shortlist(params.get('jobId') || '', params.get('balanced') !== '0'));
     } catch (e) { return send(res, 400, { error: e.message }); }
   }

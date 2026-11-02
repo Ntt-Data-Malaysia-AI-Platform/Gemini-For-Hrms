@@ -122,7 +122,7 @@ async function demo(agent, user, message, trace) {
 }
 
 // Tools that change data. When one succeeds, the reply is flagged so the browser refreshes its dashboards.
-const WRITES = new Set(['submit_leave_request', 'create_service_request', 'update_case', 'schedule_interview', 'generate_document']);
+const WRITES = new Set(['submit_leave_request', 'create_service_request', 'update_case', 'schedule_interview', 'schedule_interview_round', 'generate_document']);
 const flag = (r) => ({ ...r, changed: r.trace.some((t) => t.ok && WRITES.has(t.tool)) });
 
 export async function chat(agent, user, history, message, lang = 'en') {

@@ -60,13 +60,16 @@ export interface AppFields {
 export interface PreparedApplication { job: { id: string; title: string; dept: string; location: string }; fields: AppFields; source: 'gemini' | 'parsed'; required: string[] }
 export interface CandidateProfile {
   name: string; title: string; location: string; years: number; skills: string[]; certifications: string[]; education: string; summary: string;
-  applications: { reference: string; jobId: string; title: string; submittedAt: string; status: string }[];
+  applications: { reference: string; jobId: string; title: string; submittedAt: string; status: string; interview: InterviewState }[];
 }
+export type InterviewStatus = 'Completed' | 'Scheduled' | 'Confirmation pending' | 'Not scheduled';
+export interface InterviewRound { n: number; name: string; panel: string; status: InterviewStatus; when: string | null }
+export interface InterviewState { rounds: InterviewRound[]; next: { type: 'schedule' | 'resend' | 'wait'; round: number; label: string } | null }
 export interface ScoreRow { key: string; label: string; max: number; pts: number; detail: string }
 export interface ShortCandidate {
   rank: number; applicationId: string; name: string; title: string; employer: string | null; location: string; years: number; noticePeriod: string;
   certifications: string[]; education: string; slot: string; score: number; scorecard: ScoreRow[]; matched: string[]; missing: string[]; preferred: string[];
-  why: string; isNew: boolean; submittedAt: string;
+  why: string; isNew: boolean; submittedAt: string; interview: InterviewState;
 }
 export interface Shortlist {
   job: { id: string; title: string; dept: string; location: string; minYears: number; must: string[] };
@@ -180,12 +183,14 @@ export const api = {
   report: (f?: HrFilters) => call<ExecReport>(`/api/report${qs(f)}`),
   teamsNotify: (title: string, subtitle: string, items: Notice[]) => call<{ sent: number }>('/api/teams/notify', { title, subtitle, items }),
   candidate: {
+    confirmInterview: (reference: string) => call<{ reference: string; round: number; when: string }>('/api/candidate/interview/confirm', { reference }),
     profile: () => call<CandidateProfile>('/api/candidate/profile'),
     search: (query: string) => call<JobSearch>('/api/candidate/search', { query }),
     prepare: (jobId: string) => call<PreparedApplication>('/api/candidate/prepare', { jobId }),
     apply: (jobId: string, fields: AppFields) => call<{ reference: string; job: { id: string; title: string }; submittedAt: string }>('/api/candidate/apply', { jobId, fields }),
   },
   recruiting: {
+    schedule: (applicationId: string) => call<{ applicationId: string; candidate: string; round: number; roundName: string; status: InterviewStatus; when: string; panel: string; resent: boolean }>('/api/hr/recruiting/schedule', { applicationId }),
     jobs: () => call<{ jobs: HrJob[] }>('/api/hr/recruiting/jobs'),
     shortlist: (jobId: string, balanced: boolean) => call<Shortlist>(`/api/hr/recruiting/shortlist?jobId=${encodeURIComponent(jobId)}&balanced=${balanced ? 1 : 0}`),
   },

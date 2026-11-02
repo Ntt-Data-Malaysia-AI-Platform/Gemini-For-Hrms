@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Award, BadgeCheck, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react';
 import { api, type HrJob, type ShortCandidate, type Shortlist } from '../lib/api';
+import { HrInterviewPipeline } from './InterviewPipeline';
 
 const barColor = (pts: number, max: number) => (pts >= max * 0.8 ? '#199e70' : pts >= max * 0.5 ? '#3987e5' : '#c98500');
 
@@ -14,7 +15,7 @@ function Ring({ score }: { score: number }) {
   );
 }
 
-function CandidateCard({ c, must }: { c: ShortCandidate; must: string[] }) {
+function CandidateCard({ c, must, onChanged }: { c: ShortCandidate; must: string[]; onChanged: () => void }) {
   const top = c.slot === 'Top profile';
   return (
     <article className={`rounded-2xl border p-4 ${top ? 'border-cyan-400/50 bg-cyan-400/[0.06]' : 'border-white/[0.08] bg-white/[0.03]'}`}>
@@ -55,6 +56,7 @@ function CandidateCard({ c, must }: { c: ShortCandidate; must: string[] }) {
           </ul>
         </div>
       </div>
+      <HrInterviewPipeline applicationId={c.applicationId} interview={c.interview} onChanged={onChanged} />
     </article>
   );
 }
@@ -114,7 +116,7 @@ export function ShortlistPanel({ onAsk }: { onAsk: (agentId: string, prompt: str
             ) : <span className="rounded-full bg-white/[0.06] px-2.5 py-1">Pure score ranking</span>}
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />}
           </div>
-          <div className="space-y-3">{data.candidates.map((c) => <CandidateCard key={c.applicationId} c={c} must={data.job.must} />)}</div>
+          <div className="space-y-3">{data.candidates.map((c) => <CandidateCard key={c.applicationId} c={c} must={data.job.must} onChanged={() => load(true)} />)}</div>
           <p className="mt-3 flex items-start gap-2 text-[11px] text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-300" />{data.fairness}</p>
         </>
       )}

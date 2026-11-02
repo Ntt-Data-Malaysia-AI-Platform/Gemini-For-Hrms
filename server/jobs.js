@@ -159,6 +159,81 @@ const pool = () => [
   ...submitted,
 ];
 
+// ---------- Interview rounds: one-click scheduling, status per round, candidate confirmation ----------
+const IFILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '.cache', 'interviews.json');
+let interviews = {};
+try { interviews = JSON.parse(fs.readFileSync(IFILE, 'utf8')); } catch { /* none yet */ }
+const saveInterviews = () => { try { fs.mkdirSync(path.dirname(IFILE), { recursive: true }); fs.writeFileSync(IFILE, JSON.stringify(interviews, null, 2)); } catch { /* best effort */ } };
+
+const ROUNDS = [
+  { n: 1, name: 'HR screen', panel: 'HR · Priya Menon' },
+  { n: 2, name: 'Technical interview', panel: 'Cloud practice panel' },
+  { n: 3, name: 'Final panel', panel: 'Hiring manager and Practice Head' },
+];
+const NS = 'Not scheduled', CP = 'Confirmation pending', SC = 'Scheduled', DONE = 'Completed';
+// Mixed progress for the candidates already in the pool, chosen from the application id so it stays stable.
+const PATTERNS = [[NS, NS, NS], [DONE, CP, NS], [DONE, SC, NS], [DONE, DONE, CP], [CP, NS, NS], [SC, NS, NS], [DONE, NS, NS], [NS, NS, NS], [DONE, DONE, SC]];
+const hash = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const slotAt = (dayOffset, hour) => { const d = new Date(); d.setUTCHours(0, 0, 0, 0); d.setUTCDate(d.getUTCDate() + dayOffset); d.setUTCHours(hour - 8, 0, 0, 0); return d.toISOString(); }; // hour is Malaysia time (UTC+8)
+
+// Seeded interviews fall on business days at normal interview hours (Malaysia time).
+const bizAt = (offset, hour) => { let o = offset; const dir = offset < 0 ? -1 : 1; while ([0, 6].includes(new Date(slotAt(o, 12)).getUTCDay())) o += dir; return slotAt(o, hour); };
+const HOURS = [10, 11, 14, 15];
+
+function seedRounds(a) {
+  const p = a.mine ? [NS, NS, NS] : PATTERNS[hash(a.id) % PATTERNS.length];
+  return ROUNDS.map((r, i) => ({ ...r, status: p[i], when: p[i] === DONE ? bizAt(-(3 - i) * 4 - (hash(a.id) % 3), HOURS[(hash(a.id) + i) % 4]) : p[i] === NS ? null : bizAt(2 + i + (hash(a.id) % 3), HOURS[(hash(a.id) + i) % 4]) }));
+}
+const roundsFor = (a) => interviews[a.id] || seedRounds(a);
+
+// What the one-click button should do for this candidate
+function nextAction(rounds) {
+  const r = rounds.find((x) => x.status !== DONE);
+  if (!r) return null;
+  if (r.status === NS) return { type: 'schedule', round: r.n, label: `Schedule Round ${r.n}` };
+  if (r.status === CP) return { type: 'resend', round: r.n, label: `Resend Round ${r.n} invite` };
+  return { type: 'wait', round: r.n, label: `Round ${r.n} scheduled` };
+}
+
+// Next free slot: business days starting tomorrow, four interviews a day (Malaysia time)
+function nextSlot() {
+  const taken = Object.values(interviews).flat().filter((r) => r.when && r.status !== DONE).length;
+  let day = 1, left = taken;
+  const free = () => { const dow = new Date(slotAt(day, 12)).getUTCDay(); return dow !== 0 && dow !== 6; };
+  while (!free()) day++;
+  while (left >= 4) { left -= 4; day++; while (!free()) day++; }
+  return slotAt(day, [10, 11, 14, 15][left]);
+}
+
+const findApp = (id) => pool().find((a) => a.id === id);
+
+export function scheduleNext(applicationId) {
+  const a = findApp(applicationId);
+  if (!a) throw new Error('Unknown application.');
+  const rounds = roundsFor(a).map((r) => ({ ...r }));
+  const act = nextAction(rounds);
+  if (!act) throw new Error('All interview rounds are already completed.');
+  if (act.type === 'wait') throw new Error(`Round ${act.round} is already scheduled.`);
+  const r = rounds.find((x) => x.n === act.round);
+  if (act.type === 'schedule') { r.status = CP; r.when = nextSlot(); }
+  r.invitedAt = new Date().toISOString();
+  interviews[a.id] = rounds; saveInterviews();
+  return { applicationId: a.id, candidate: a.fields.fullName, round: r.n, roundName: r.name, status: r.status, when: r.when, panel: r.panel, resent: act.type === 'resend', next: nextAction(rounds) };
+}
+
+// The candidate confirms the proposed slot in the portal
+export function confirmInterview(user, reference) {
+  const a = submitted.find((x) => x.id === reference && x.candidateEmail === user.email);
+  if (!a) throw new Error('Application not found.');
+  const rounds = roundsFor(a).map((r) => ({ ...r }));
+  const r = rounds.find((x) => x.status === CP);
+  if (!r) throw new Error('There is no interview waiting for your confirmation.');
+  r.status = SC; r.confirmedAt = new Date().toISOString();
+  interviews[a.id] = rounds; saveInterviews();
+  return { reference, round: r.n, when: r.when };
+}
+const interviewOf = (a) => { const rounds = roundsFor(a); return { rounds, next: nextAction(rounds) }; };
+
 // ---------- Gemini (JSON), with fallbacks everywhere ----------
 async function gemJson(system, payload, ms = 30000) {
   const key = process.env.GEMINI_API_KEY;
@@ -282,7 +357,7 @@ export function submitApplication(user, jobId, f = {}) {
 }
 
 export const myApplications = (user) => submitted.filter((a) => a.candidateEmail === user.email)
-  .map((a) => ({ reference: a.id, jobId: a.jobId, title: jobById(a.jobId)?.title || a.jobId, submittedAt: a.submittedAt, status: a.status }))
+  .map((a) => ({ reference: a.id, jobId: a.jobId, title: jobById(a.jobId)?.title || a.jobId, submittedAt: a.submittedAt, status: a.status, interview: interviewOf(a) }))
   .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
 
 export const candidateProfile = (user) => ({
@@ -340,7 +415,7 @@ export async function shortlist(jobId, balanced = true) {
       rank: i + 1, applicationId: r.a.id, name: r.a.fields.fullName, title: r.a.fields.currentTitle, employer: r.a.fields.currentEmployer || null, location: r.a.fields.location,
       years: r.a.fields.yearsExperience, noticePeriod: r.a.fields.noticePeriod, certifications: r.a.fields.certifications, education: r.a.fields.education,
       slot: slot.get(r.a.id), score: r.s.total, scorecard: r.s.parts, matched: r.s.matched, missing: r.s.missing, preferred: r.s.niceMatched,
-      why: notes[r.a.id] || base(r), isNew: Boolean(r.a.mine), submittedAt: r.a.submittedAt,
+      why: notes[r.a.id] || base(r), isNew: Boolean(r.a.mine), submittedAt: r.a.submittedAt, interview: interviewOf(r.a),
     })),
     fairness: 'Scores use skills, experience, certifications and role fit only. Name, gender and age are not scoring inputs. Gender is a self-declared field used only to compose a balanced slate.',
   };
@@ -351,6 +426,19 @@ export const recentSubmissions = () => submitted.slice(-5).reverse().map((a) => 
 
 // ---------- Agent tool for the Recruitment Operations agent ----------
 export const jobsTools = {
+  schedule_interview_round: {
+    description: 'One-click scheduling of the next interview round for a shortlisted portal candidate. Pass the candidate name (or application ID like APP-3001) and optionally the job. It proposes the next free slot, sends the invite and sets that round to Confirmation pending until the candidate confirms. Also resends a pending invite.',
+    parameters: { type: 'OBJECT', properties: { candidate: { type: 'STRING', description: 'Candidate name or application ID' }, job: { type: 'STRING', description: 'Job ID like J-101 or part of the title, to pick the right application' } }, required: ['candidate'] },
+    source: 'Job portal',
+    run: async (u, { candidate, job }) => {
+      const q = String(candidate || '').toLowerCase();
+      const j = job ? JOBS.find((x) => x.id.toLowerCase() === String(job).toLowerCase() || x.title.toLowerCase().includes(String(job).toLowerCase())) : null;
+      const hits = pool().filter((a) => (a.id.toLowerCase() === q || (a.fields.fullName || '').toLowerCase().includes(q)) && (!j || a.jobId === j.id));
+      if (!hits.length) return { error: `No candidate matches "${candidate}".` };
+      if (new Set(hits.map((h) => h.jobId)).size > 1) return { error: 'That candidate applied to several roles. Say which role: ' + hits.map((h) => `${h.id} (${jobById(h.jobId)?.title})`).join('; ') };
+      try { return { ...scheduleNext(hits[0].id), role: jobById(hits[0].jobId)?.title }; } catch (e) { return { error: e.message }; }
+    },
+  },
   shortlist_candidates: {
     description: 'Get the ATS-ranked top 5 candidates from the job portal for one open role, with a scorecard for each. Pass jobId (for example J-101) or the job title. By default the slate is balanced: the best overall profile plus the best 2 men and best 2 women. Use balanced=false for a pure score ranking.',
     parameters: { type: 'OBJECT', properties: { job: { type: 'STRING', description: 'Job ID like J-101, or part of the job title' }, balanced: { type: 'BOOLEAN', description: 'false for a pure top 5 by score' } }, required: ['job'] },
