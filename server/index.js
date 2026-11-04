@@ -25,6 +25,7 @@ const onedrive = await import('./onedrive.js');
 const report = await import('./report.js');
 const teams = await import('./teams.js');
 const jobs = await import('./jobs.js');
+const store = await import('./store.js');
 
 // Cloud Run (and most hosts) pass the port in PORT; API_PORT is the local dev setting.
 const PORT = Number(process.env.PORT || process.env.API_PORT || 8787);
@@ -151,6 +152,7 @@ http.createServer(async (req, res) => {
 }).listen(PORT, () => {
   const s = status();
   console.log(`NTT DATA HRMS API on http://localhost:${PORT}  [${s.gemini} | ${s.sap} | M365 ${s.m365 ? 'configured' : 'not configured'}${s.demoHr ? ' | demo HR on' : ''}]`);
+  store.init();
   warmSapCache();
   setInterval(warmSapCache, 25 * 60 * 1000).unref();
 });

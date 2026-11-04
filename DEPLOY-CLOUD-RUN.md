@@ -110,7 +110,7 @@ foreach ($n in $SECRET_NAMES + $SETTING_NAMES) { "{0,-18} {1}" -f $n, $(if (Get-
 ## 2. Enable the APIs
 
 ```powershell
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com firestore.googleapis.com
 ```
 
 ---
@@ -333,7 +333,8 @@ If the app should not be public:
 ## Good to know
 
 - **The demo email accounts are public-facing.** Anyone who knows the Tyson or Tessa password can sign in to a public service. For anything beyond a demo, use Microsoft 365 for HR plus `HR_ALLOWED_USERS`, or put IAP in front (see above).
-- **Local caches are temporary on Cloud Run.** The SAP response cache and the IT/facilities request list (`server/.cache`) are lost when the instance restarts or scales to zero. SAP data is fetched again automatically; requests that reached Jira are kept there.
+- **Data is kept in Firestore.** Job applications, interview rounds and IT/facilities requests are stored in a Firestore database (free tier: 1 GiB, 50,000 reads and 20,000 writes a day) and survive restarts. The app reaches it through the Cloud Run service account with the `roles/datastore.user` role, so there is **no key to create or store**. `redeploy-cloud-run.sh` and `deploy-cloud-shell.sh` create the database and grant the role. Locally the same data is kept in `server/.cache` files. The SAP response cache is still in memory and is simply fetched again after a restart.
+- **Optional budget alert.** Firestore costs nothing inside the free quota, but a budget alert at a few dollars (Billing > Budgets) is a cheap safety net.
 - **The SAP sandbox is rate-limited.** The app throttles and caches calls, but a cold start runs a warm-up that may take ~30 seconds before every widget fills in.
 - **Teams tab:** after deploying, set `APP_URL` in your local `.env` to the Service URL and run `npm run teams:package` so the Teams package points at Cloud Run.
 - **Costs:** with `min-instances=0` you pay only while requests are served, plus small charges for Artifact Registry storage, Cloud Build minutes and Secret Manager access. Gemini, SAP and Jira usage is billed by those services.
@@ -375,6 +376,15 @@ gcloud artifacts repositories delete $REPO --location=$REGION
 ```powershell
 gcloud iam service-accounts delete $SA_EMAIL
 ```
+
+### 4b. Delete the Firestore database and its role
+
+```bash
+gcloud firestore databases delete --database='(default)'
+gcloud projects remove-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SA_EMAIL" --role="roles/datastore.user" --condition=None
+```
+
+(Run the role removal before deleting the service account in step 4 if you want it removed cleanly.)
 
 ### 5. Remove Cloud Build's upload bucket (optional)
 

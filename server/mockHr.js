@@ -1,8 +1,6 @@
 // Simulated HR system: the mock tenant behind every "Simulated" tool.
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import * as store from './store.js';
 
 const DAY = 864e5;
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -158,9 +156,8 @@ const seedRequests = [
   { id: 'REQ-7120', empId: 'E1001', category: 'IT', item: 'Software access', details: 'IntelliJ Ultimate licence', status: 'Fulfilled', created: addDays(-20) },
 ];
 // Service requests persist across restarts because they are linked to permanent Jira issues.
-const REQUESTS_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '.cache', 'service-requests.json');
-const serviceRequests = (() => { try { return JSON.parse(fs.readFileSync(REQUESTS_FILE, 'utf8')); } catch { return seedRequests; } })();
-const saveRequests = () => { try { fs.mkdirSync(path.dirname(REQUESTS_FILE), { recursive: true }); fs.writeFileSync(REQUESTS_FILE, JSON.stringify(serviceRequests, null, 2)); } catch { /* best effort */ } };
+const serviceRequests = await store.load('service-requests', seedRequests);
+const saveRequests = () => store.save('service-requests', serviceRequests);
 
 const documentsFor = (empId) => [
   { id: 'DOC-1', type: 'Offer Letter', date: byId(empId).hireDate },

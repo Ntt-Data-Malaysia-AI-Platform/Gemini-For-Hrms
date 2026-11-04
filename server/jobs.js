@@ -1,10 +1,6 @@
 // Job portal: mock openings, the candidate's resume, AI job search, field extraction for applications,
-// ATS scoring and the top-5 shortlist HR sees. Applications persist in server/.cache/applications.json.
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '.cache', 'applications.json');
+// ATS scoring and the top-5 shortlist HR sees. Applications and interviews persist through store.js (Firestore on Cloud Run).
+import * as store from './store.js';
 
 // ---------- Skill vocabulary: canonical skill -> words that count as a mention ----------
 const SKILLS = {
@@ -149,9 +145,8 @@ const SEED = [
 ];
 
 // ---------- Persistence of submitted applications ----------
-let submitted = [];
-try { submitted = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch { /* none yet */ }
-const save = () => { try { fs.mkdirSync(path.dirname(FILE), { recursive: true }); fs.writeFileSync(FILE, JSON.stringify(submitted, null, 2)); } catch { /* best effort */ } };
+const submitted = await store.load('applications', []);
+const save = () => store.save('applications', submitted);
 
 // All applications as one flat list: {id, jobId, candidateName, fields, submittedAt, status, mine}
 const pool = () => [
@@ -160,10 +155,8 @@ const pool = () => [
 ];
 
 // ---------- Interview rounds: one-click scheduling, status per round, candidate confirmation ----------
-const IFILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '.cache', 'interviews.json');
-let interviews = {};
-try { interviews = JSON.parse(fs.readFileSync(IFILE, 'utf8')); } catch { /* none yet */ }
-const saveInterviews = () => { try { fs.mkdirSync(path.dirname(IFILE), { recursive: true }); fs.writeFileSync(IFILE, JSON.stringify(interviews, null, 2)); } catch { /* best effort */ } };
+const interviews = await store.load('interviews', {});
+const saveInterviews = () => store.save('interviews', interviews);
 
 const ROUNDS = [
   { n: 1, name: 'HR screen', panel: 'HR · Priya Menon' },

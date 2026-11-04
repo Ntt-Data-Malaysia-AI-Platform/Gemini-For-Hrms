@@ -48,7 +48,7 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE}:$(date +%Y%m%d-
 
 # ---------- APIs, image repository, service account ----------
 say "Enabling Cloud Run, Secret Manager and the build services they rely on"
-gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com firestore.googleapis.com
 
 say "Preparing the image repository and the runtime service account"
 gcloud artifacts repositories describe "$REPO" --location="$REGION" >/dev/null 2>&1 \
@@ -93,6 +93,10 @@ trap 'rm -f "$ENV_YAML"' EXIT
 echo "Settings being applied (no secrets):"; cut -d: -f1 "$ENV_YAML" | sed 's/^/  /'
 
 # ---------- Build ----------
+say "Making sure Firestore (free tier) exists; the app stores applications and interviews there, reached through the service account"
+gcloud firestore databases describe --database='(default)' >/dev/null 2>&1   || gcloud firestore databases create --database='(default)' --location="$REGION" --type=firestore-native
+gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$SA_EMAIL" --role="roles/datastore.user" --condition=None >/dev/null
+
 say "Letting Cloud Build push to the image repository"
 PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format="value(projectNumber)")
 BUILD_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rebuilds the image from the current code and rolls it out to the existing Cloud Run service.
 # Secrets, settings, scaling and the service account stay exactly as already deployed, so no .env is needed.
+# It also makes sure Firestore (free tier) exists and the service account can use it; there is no key to manage.
 # Run in Google Cloud Shell from the repo folder after `git pull`:
 #   bash redeploy-cloud-run.sh [project-id] [region]
 set -euo pipefail
@@ -21,6 +22,21 @@ envval() { printf '%s' "$SVC_JSON" | jq -r --arg n "$1" '.spec.template.spec.con
 CLIENT_ID=$(envval VITE_CLIENT_ID); TENANT_ID=$(envval VITE_TENANT_ID)
 [ -n "$CLIENT_ID" ] || echo "note: VITE_CLIENT_ID is not set on the service; Microsoft 365 sign-in stays off."
 
+# Firestore keeps applications, interviews and requests across restarts. The app reaches it with the service account
+# attached to Cloud Run, so access is an IAM role, not a key. Safe to repeat.
+echo; echo "==> Making sure Firestore is ready"
+gcloud services enable firestore.googleapis.com
+if ! gcloud firestore databases describe --database='(default)' >/dev/null 2>&1; then
+  gcloud firestore databases create --database='(default)' --location="$REGION" --type=firestore-native
+fi
+RUN_SA=$(printf '%s' "$SVC_JSON" | jq -r '.spec.template.spec.serviceAccountName // empty')
+if [ -n "$RUN_SA" ]; then
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$RUN_SA" --role="roles/datastore.user" --condition=None >/dev/null
+  echo "Granted roles/datastore.user to $RUN_SA"
+else
+  echo "note: the service has no dedicated service account; the default Compute account is used and needs roles/datastore.user."
+fi
+
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE}:$(date +%Y%m%d-%H%M%S)"
 
 echo; echo "==> Building the container image (2-4 minutes)"
@@ -34,4 +50,7 @@ URL=$(gcloud run services describe "$SERVICE" --format="value(status.url)")
 echo; echo "==> Checking the live service"
 sleep 3
 curl -fsS "$URL/api/catalog" | head -c 120 && echo
+echo; echo "==> Firestore check from the new revision"
+sleep 15
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=$SERVICE AND textPayload:\"[store]\"" --limit=3 --freshness=15m --format="value(textPayload)" || true
 echo; echo "Deployed: $URL"
